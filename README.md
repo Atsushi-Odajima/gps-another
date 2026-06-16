@@ -71,6 +71,17 @@ GUI 側は `send(latitude, longitude)` と `clear()` のみを呼ぶため、送
 python -m unittest
 ```
 
+## Windows パッケージング
+
+PyInstaller で Windows 向けの `dist\gps-another\gps-another.exe` を作成できます。
+
+```powershell
+pip install -r requirements-dev.txt
+.\build_windows.ps1 -Python "C:\Users\kuroa\AppData\Local\Programs\Python\Python314\python.exe"
+```
+
+配布先では、`ORS_API_KEY` をユーザー環境変数に設定するか、`gps-another.exe` と同じフォルダに `.env` を置いてください。
+
 ## 注意
 
 このアプリは所有端末に対する開発・検証用途のみを想定しています。App Store 公開や第三者端末操作を前提にしていません。

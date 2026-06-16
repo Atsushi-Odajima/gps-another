@@ -5,7 +5,7 @@ __pycache__/
 venv/
 .env
 *.log
+ui-preview.png
 dist/
 build/
 *.spec
-
