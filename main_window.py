@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from typing import Sequence
 
-from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
+from PySide6.QtCore import QEvent, QObject, Qt, QThread, QTimer, Signal, Slot
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSlider,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QToolButton,
@@ -24,7 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from config import CONFIG
+from config import CONFIG, resource_path
 from device_manager import DeviceManager, DeviceStatus
 from location_sender import LocationSender, MockLocationSender
 from route_interpolator import Coordinate, TransmissionPlan, build_transmission_plan
@@ -68,6 +70,9 @@ class MainWindow(QMainWindow):
     ) -> None:
         super().__init__()
         self.setWindowTitle("gps-another")
+        icon_path = resource_path("assets/app_icon.ico")
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
         self.setMinimumSize(980, 640)
 
         self.device_manager = device_manager or DeviceManager()
@@ -89,10 +94,16 @@ class MainWindow(QMainWindow):
         self._load_map()
         self._refresh_device_status()
         self._update_speed_mode()
+        QTimer.singleShot(0, self._position_overlays)
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override name
         super().resizeEvent(event)
-        self._position_overlays()
+        QTimer.singleShot(0, self._position_overlays)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802 - Qt override name
+        if watched is getattr(self, "map_stage", None) and event.type() == QEvent.Resize:
+            QTimer.singleShot(0, self._position_overlays)
+        return super().eventFilter(watched, event)
 
     def _build_ui(self) -> None:
         self.setStyleSheet(APP_STYLES)
@@ -110,6 +121,10 @@ class MainWindow(QMainWindow):
 
         logo = QLabel("G")
         logo.setObjectName("logo")
+        logo_png = resource_path("assets/app_icon.png")
+        if logo_png.exists():
+            logo.setPixmap(QPixmap(str(logo_png)).scaled(28, 28, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            logo.setText("")
         title = QLabel("gps-another")
         title.setObjectName("appTitle")
         subtitle = QLabel("iPhone location simulation MVP")
@@ -132,6 +147,7 @@ class MainWindow(QMainWindow):
 
         self.map_stage = QWidget()
         self.map_stage.setObjectName("mapStage")
+        self.map_stage.installEventFilter(self)
         self.map_view = QWebEngineView(self.map_stage)
 
         root_layout.addWidget(header, 0)
@@ -231,6 +247,21 @@ class MainWindow(QMainWindow):
         self.speed_slider.setRange(CONFIG.min_speed_kmh, CONFIG.max_speed_kmh)
         self.speed_slider.setValue(CONFIG.default_speed_kmh)
         self.speed_slider.valueChanged.connect(self._update_speed_mode)
+
+        speed_input_row = QHBoxLayout()
+        speed_input_label = QLabel("速度")
+        speed_input_label.setObjectName("subtleLabel")
+        self.speed_spin = QSpinBox()
+        self.speed_spin.setRange(CONFIG.min_speed_kmh, CONFIG.max_speed_kmh)
+        self.speed_spin.setSuffix(" km/h")
+        self.speed_spin.setValue(CONFIG.default_speed_kmh)
+        self.speed_spin.setObjectName("speedSpin")
+        self.speed_spin.valueChanged.connect(self.speed_slider.setValue)
+        self.speed_slider.valueChanged.connect(self.speed_spin.setValue)
+        speed_input_row.addWidget(speed_input_label)
+        speed_input_row.addStretch(1)
+        speed_input_row.addWidget(self.speed_spin)
+        layout.addLayout(speed_input_row)
         layout.addWidget(self.speed_slider)
 
         self.trip_label = QLabel("移動 1 回")
@@ -329,7 +360,8 @@ class MainWindow(QMainWindow):
         margin = 16
         search_width = min(480, max(360, rect.width() - 560))
         self.search_panel.setGeometry(margin, 16, search_width, 46)
-        self.side_panel.setGeometry(margin, 78, 320, min(430, rect.height() - 112))
+        panel_height = min(540, max(500, rect.height() - 104))
+        self.side_panel.setGeometry(margin, 78, 322, panel_height)
         self.mode_panel.setGeometry(rect.width() - 202, 16, 170, 40)
         self.map_tools.setGeometry(rect.width() - 50, max(96, rect.height() // 2 - 105), 38, 210)
         notice_width = min(520, rect.width() - 360)
@@ -597,9 +629,9 @@ QMainWindow {
     max-height: 46px;
 }
 #logo {
-    background: #6577ff;
+    background: #050505;
     color: white;
-    border-radius: 8px;
+    border-radius: 5px;
     min-width: 28px;
     min-height: 28px;
     max-width: 28px;
@@ -704,6 +736,14 @@ QMainWindow {
     color: #6276ff;
     min-height: 20px;
     font-weight: 800;
+}
+#speedSpin {
+    color: #233360;
+    background: #ffffff;
+    border: 1px solid #dbe2f5;
+    border-radius: 5px;
+    padding: 4px 8px;
+    min-width: 88px;
 }
 QSlider::groove:horizontal {
     height: 2px;
