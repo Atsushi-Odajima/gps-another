@@ -23,6 +23,12 @@ python app.py
 
 OpenRouteService を第一候補として使用します。GraphHopper は `GRAPHHOPPER_API_KEY` を設定した場合のみ代替候補になります。
 
+環境変数の代わりに、リポジトリ直下の `.env` に以下の形式で保存することもできます。`.env` は Git 管理対象外です。
+
+```powershell
+ORS_API_KEY=your-openrouteservice-api-key
+```
+
 ## MVP 機能
 
 - Leaflet + OpenStreetMap タイルによる地図表示
@@ -68,4 +74,3 @@ python -m unittest
 ## 注意
 
 このアプリは所有端末に対する開発・検証用途のみを想定しています。App Store 公開や第三者端末操作を前提にしていません。
-
